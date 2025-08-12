@@ -24,6 +24,10 @@ SMTP_PORT = int(os.getenv("SMTP_PORT", 465))
 # GOOGLE SHEETS SETUP
 # =======================
 SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+# Get the JSON string from environment variable
+GOOGLE_SERVICE_ACCOUNT_JSON = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
+if not GOOGLE_SERVICE_ACCOUNT_JSON:
+    raise ValueError("Environment variable 'GOOGLE_SERVICE_ACCOUNT_JSON' is not set")
 
 # Load credentials from JSON string stored in env variable
 creds_dict = json.loads(GOOGLE_SERVICE_ACCOUNT_JSON)
@@ -191,6 +195,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
