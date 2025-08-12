@@ -10,6 +10,8 @@ import os
 from datetime import datetime, timedelta
 import pytz  
 
+import json, os
+
 # =======================
 # LOAD SECRETS FROM ENV
 # =======================
@@ -27,9 +29,12 @@ GOOGLE_SERVICE_ACCOUNT_JSON = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
 SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 
 # Load credentials from JSON string stored in env variable
-creds_dict = json.loads(GOOGLE_SERVICE_ACCOUNT_JSON)
+creds_dict = json.loads(os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON"))
 CREDS = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, SCOPE)
 CLIENT = gspread.authorize(CREDS)
+
+
+
 
 # Google Sheet Details
 SHEET_ID = os.getenv("SHEET_ID")
@@ -160,4 +165,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
