@@ -191,10 +191,11 @@ def main():
                         reminder_sent.setdefault(email, []).append(current_workshop_date_str)
                         save_dict_to_file(reminder_sent, REMINDER_SENT_FILE)
 
-        time.sleep(60)
+        time.sleep(600)
 
 if __name__ == "__main__":
     main()
+
 
 
 
