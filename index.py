@@ -48,12 +48,12 @@ else:
 
 if os.path.exists(REMINDER_SENT_FILE):
     with open(REMINDER_SENT_FILE, "r") as f:
-        reminder_sent = json.load(f)  # We'll store reminders as dict {email: [dates]}
+        reminder_sent = json.load(f)  # dict {email: [dates]}
 else:
     reminder_sent = {}
 
 # Workshop details constants
-WORKSHOP_TITLE = os.getenv("WORKSHOP_TITLE", "Python Fundamentals")
+WORKSHOP_TITLE = os.getenv("WORKSHOP_TITLE", "Agentic AI Workshop")
 WORKSHOP_TIMEZONE = pytz.timezone("Asia/Kolkata")
 WORKSHOP_PLATFORM_LINK = os.getenv("WORKSHOP_PLATFORM_LINK", "https://meet.google.com/xyz-abc-def")
 
@@ -66,7 +66,7 @@ else:
     BASE64_IMAGE = None
 
 # Allowed workshop days (Tuesday=1, Friday=4, Sunday=6)
-WORKSHOP_DAYS = {1, 4, 6}  
+WORKSHOP_DAYS = {1, 4, 6}
 
 def save_set_to_file(data_set, filename):
     with open(filename, "w") as f:
@@ -82,19 +82,20 @@ def get_next_workshop_datetime(from_dt=None):
         from_dt = datetime.now(WORKSHOP_TIMEZONE)
     else:
         from_dt = from_dt.astimezone(WORKSHOP_TIMEZONE)
-    
+
     for day_offset in range(8):  # check up to next 7 days
-        candidate_day = (from_dt + timedelta(days=day_offset))
+        candidate_day = from_dt + timedelta(days=day_offset)
         if candidate_day.weekday() in WORKSHOP_DAYS:
-            workshop_dt = candidate_day.replace(hour=20, minute=0, second=0, microsecond=0)
-            if workshop_dt > from_dt:
-                return workshop_dt
-    # Fallback: 1 week later same day
+            workshop_start = candidate_day.replace(hour=20, minute=0, second=0, microsecond=0)
+            # We want only upcoming workshops after now
+            if workshop_start > from_dt:
+                return workshop_start
+    # fallback: 1 week later same day
     return from_dt + timedelta(days=7)
 
 def is_reminder_time(now):
-    """Check if 'now' is 7 PM IST on a valid workshop day"""
-    return (now.weekday() in WORKSHOP_DAYS and now.hour == 19 and now.minute == 0)
+    """Check if now is exactly 7 PM IST on a workshop day"""
+    return now.weekday() in WORKSHOP_DAYS and now.hour == 19 and now.minute == 0
 
 def send_email(recipient, subject, html_content, retries=3):
     for attempt in range(1, retries + 1):
@@ -120,11 +121,12 @@ def send_email(recipient, subject, html_content, retries=3):
 def main():
     while True:
         now = datetime.now(WORKSHOP_TIMEZONE)
-        rows = SHEET.get_all_values()[1:]  # Skip header
+        rows = SHEET.get_all_values()[1:]  # skip header
 
-        # Determine the next workshop datetime and reminder datetime (7 PM, 1 hour before)
+        # Get next workshop datetime (8 PM IST on Tuesday/Friday/Sunday)
         next_workshop_dt = get_next_workshop_datetime(now)
-        reminder_dt = next_workshop_dt - timedelta(hours=1)  # 7 PM reminder for 8 PM workshop
+        # Reminder is 1 hour before = 7 PM IST
+        reminder_dt = next_workshop_dt - timedelta(hours=1)
 
         # Embed image as Base64 in HTML
         image_html = f'<img src="data:image/jpeg;base64,{BASE64_IMAGE}">' if BASE64_IMAGE else ""
@@ -139,7 +141,7 @@ def main():
             if not email or not name:
                 continue
 
-            # Send confirmation email if not already sent
+            # Send confirmation email if not sent
             if email not in processed_emails:
                 subject = f"🎉 Congratulations {name}! Your {WORKSHOP_TITLE} Registration is Confirmed"
                 html_body = f"""
@@ -151,7 +153,7 @@ def main():
                                 <p>Dear <b>{name}</b>,</p>
                                 <p>You are confirmed for the <b>{WORKSHOP_TITLE}</b> workshop.</p>
                                 <p>📅 {next_workshop_dt.strftime('%B %d, %Y')} ({next_workshop_dt.strftime('%A')})<br>
-                                   🕖 {next_workshop_dt.strftime('%I:%M %p IST')}<br>
+                                   🕗 8:00 PM - 10:00 PM IST<br>
                                    🔗 <a href="{WORKSHOP_PLATFORM_LINK}">Join Here</a></p>
                             </div>
                         </body>
@@ -161,14 +163,16 @@ def main():
                     processed_emails.add(email)
                     save_set_to_file(processed_emails, PROCESSED_EMAILS_FILE)
 
-            # Send reminder only if now is 7 PM on workshop day, user registered, and reminders < 3
+            # Send reminder email at 7:00 PM IST on workshop day, max 3 reminders per user
             if (email in processed_emails
                 and is_reminder_time(now)
-                and reminder_sent.get(email, []).__len__() < 3):
+                and len(reminder_sent.get(email, [])) < 3):
 
-                # Check if already reminded for this workshop datetime
                 reminded_dates = set(reminder_sent.get(email, []))
-                if next_workshop_dt.strftime("%Y-%m-%d") not in reminded_dates:
+                current_workshop_date_str = next_workshop_dt.strftime("%Y-%m-%d")
+
+                # Only send reminder if not sent for this workshop date already
+                if current_workshop_date_str not in reminded_dates:
                     subject = f"⏰ Reminder: Your {WORKSHOP_TITLE} Workshop Starts in 1 Hour!"
                     html_body = f"""
                         <html>
@@ -179,18 +183,17 @@ def main():
                                     <p>Dear <b>{name}</b>,</p>
                                     <p>Your workshop starts in 1 hour!</p>
                                     <p>📅 {next_workshop_dt.strftime('%B %d, %Y')} ({next_workshop_dt.strftime('%A')})<br>
-                                       🕖 {next_workshop_dt.strftime('%I:%M %p IST')}<br>
+                                       🕗 8:00 PM - 10:00 PM IST<br>
                                        🔗 <a href="{WORKSHOP_PLATFORM_LINK}">Join Here</a></p>
                                 </div>
                             </body>
                         </html>
                     """
                     if send_email(email, subject, html_body):
-                        # Track this reminder date
-                        reminder_sent.setdefault(email, []).append(next_workshop_dt.strftime("%Y-%m-%d"))
+                        reminder_sent.setdefault(email, []).append(current_workshop_date_str)
                         save_dict_to_file(reminder_sent, REMINDER_SENT_FILE)
 
-        time.sleep(90)
+        time.sleep(60)
 
 if __name__ == "__main__":
     main()
