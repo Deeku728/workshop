@@ -20,11 +20,6 @@ SMTP_PORT = int(os.getenv("SMTP_PORT", 465))
 
 # Google API credentials path (provided in Railway via environment)
 
-json_str = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")  # This should be a JSON string
-creds_dict = json.loads(json_str)  # Now this works fine
-
-
-
 # =======================
 # GOOGLE SHEETS SETUP
 # =======================
@@ -196,6 +191,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
