@@ -129,7 +129,7 @@ def main():
                         </body>
                     </html>
                 """
-                if send_email(email, subject, html_body, "image.jpeg"):
+                if send_email(email, subject, html_body, "../static/image.jpeg"):
                     processed_emails.add(email)
                     save_set_to_file(processed_emails, PROCESSED_EMAILS_FILE)
 
@@ -152,7 +152,7 @@ def main():
                             </body>
                         </html>
                     """
-                    if send_email(email, subject, html_body, "image.jpeg"):
+                    if send_email(email, subject, html_body, "../static/image.jpeg"):
                         reminder_sent.add(email)
                         save_set_to_file(reminder_sent, REMINDER_SENT_FILE)
 
@@ -160,3 +160,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
