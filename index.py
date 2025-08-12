@@ -19,7 +19,10 @@ SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", 465))
 
 # Google API credentials path (provided in Railway via environment)
+
 GOOGLE_SERVICE_ACCOUNT_JSON = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
+creds_dict = json.loads(GOOGLE_SERVICE_ACCOUNT_JSON)  # Will decode \\n into real newlines
+
 
 # =======================
 # GOOGLE SHEETS SETUP
@@ -192,3 +195,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
