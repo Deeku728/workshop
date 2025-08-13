@@ -30,7 +30,7 @@ CREDS = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, SCOPE)
 CLIENT = gspread.authorize(CREDS)
 
 SHEET_ID = os.getenv("SHEET_ID")
-SHEET_NAME = os.getenv("SHEET_NAME", "new sheet")
+SHEET_NAME = os.getenv("SHEET_NAME", "New Responses")
 SHEET = CLIENT.open_by_key(SHEET_ID).worksheet(SHEET_NAME)
 
 # Persistent tracking files
@@ -202,6 +202,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
