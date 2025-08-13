@@ -159,6 +159,14 @@ def main():
                                     </a>
                             </p>
                             <img src="cid:workshop_image" alt="Workshop Image" style="max-width:500px; height:auto;">
+                            <p>Feel free to discuss in case of any concern or doubts </p>                     
+                            <p>Thanks and Regards, </p>
+                            <p>Career lab Consulting Pvt. Ltd,</p>
+                            <p>Training Manager</p>
+                            <p><a href="https://wa.me/918700236923" target="_blank">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" 
+                             alt="WhatsApp" 
+                            style="width:30px; height:20px;">: +91 8700 2369 23</a></p>
 
                         </div>
                     </body>
