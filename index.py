@@ -132,8 +132,8 @@ def main():
 
     for row in rows:
         try:
-            name = row[2].strip() if len(row) > 2 else None
-            email = row[1].strip() if len(row) > 1 else None
+            name = row[1].strip() if len(row) > 1 else None
+            email = row[2].strip() if len(row) > 2 else None
         except Exception:
             continue
 
@@ -202,6 +202,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
