@@ -67,19 +67,23 @@ def save_dict_to_file(data_dict, filename):
     with open(filename, "w") as f:
         json.dump(data_dict, f)
 
-def get_next_workshop_datetime(from_dt=None):
+def get_next_workshop_datetimes(from_dt=None, count=3):
+    """Return the next 'count' workshop datetimes."""
     if from_dt is None:
         from_dt = datetime.now(WORKSHOP_TIMEZONE)
     else:
         from_dt = from_dt.astimezone(WORKSHOP_TIMEZONE)
 
-    for day_offset in range(8):
+    next_workshops = []
+    day_offset = 0
+    while len(next_workshops) < count:
         candidate_day = from_dt + timedelta(days=day_offset)
         if candidate_day.weekday() in WORKSHOP_DAYS:
             workshop_start = candidate_day.replace(hour=20, minute=0, second=0, microsecond=0)
             if workshop_start > from_dt:
-                return workshop_start
-    return from_dt + timedelta(days=7)
+                next_workshops.append(workshop_start)
+        day_offset += 1
+    return next_workshops
 
 def send_email(recipient, subject, html_content):
     try:
@@ -115,7 +119,7 @@ def send_email(recipient, subject, html_content):
 def main():
     now = datetime.now(WORKSHOP_TIMEZONE)
     rows = SHEET.get_all_values()[1:]
-    next_workshop_dt = get_next_workshop_datetime(now)
+    next_workshops = get_next_workshop_datetimes(now, count=3)
 
     for row in rows:
         try:
@@ -137,7 +141,7 @@ def main():
                             <h2>Registration Confirmed</h2>
                             <p>Dear <b>{name}</b>,</p>
                             <p>You are confirmed for the <b>{WORKSHOP_TITLE}</b> workshop.</p>
-                            <p>📅 {next_workshop_dt.strftime('%B %d, %Y')} ({next_workshop_dt.strftime('%A')})<br>
+                            <p>📅 {next_workshops[0].strftime('%B %d, %Y')} ({next_workshops[0].strftime('%A')})<br>
                                🕗 8:00 PM - 10:00 PM IST<br>
                                🔗 <a href="{WORKSHOP_PLATFORM_LINK}">Join Here</a></p>
                             <img src="cid:workshop_image" alt="Workshop Image" style="max-width:600px; height:auto;">
@@ -149,27 +153,28 @@ def main():
                 processed_emails.add(email)
                 save_set_to_file(processed_emails, PROCESSED_EMAILS_FILE)
 
-        # Send reminder (if today and before workshop)
-       # Send reminders at 7 PM IST
+        # Send reminders at 7 PM IST
         if now.hour == 19 and now.weekday() in WORKSHOP_DAYS:
-            reminded_dates = set(reminder_sent.get(email, []))
-            current_date = next_workshop_dt.strftime("%Y-%m-%d")
-            if current_date not in reminded_dates:
-                subject = f"⏰ Reminder: {WORKSHOP_TITLE} Starts in 1 Hour!"
-                html_body = f"""
-                    <html><body>
-                        <h2>Workshop Reminder</h2>
-                        <p>Dear <b>{name}</b>,</p>
-                        <p>Your workshop starts in 1 hour!</p>
-                        <p>📅 {next_workshop_dt.strftime('%B %d, %Y')} ({next_workshop_dt.strftime('%A')})<br>
-                        🕗 8:00 PM - 10:00 PM IST<br>
-                        🔗 <a href="{WORKSHOP_PLATFORM_LINK}">Join Here</a></p>
-                        <img src="cid:workshop_image" style="max-width:600px; height:auto;">
-                    </body></html>
-                """
-                if send_email(email, subject, html_body):
-                    reminder_sent.setdefault(email, []).append(current_date)
-                    save_dict_to_file(reminder_sent, REMINDER_SENT_FILE)
+            reminders_for_email = reminder_sent.get(email, [])
+            for workshop_dt in next_workshops:
+                current_date_str = workshop_dt.strftime("%Y-%m-%d")
+                if len(reminders_for_email) < 3 and current_date_str not in reminders_for_email:
+                    subject = f"⏰ Reminder: {WORKSHOP_TITLE} Starts in 1 Hour!"
+                    html_body = f"""
+                        <html><body>
+                            <h2>Workshop Reminder</h2>
+                            <p>Dear <b>{name}</b>,</p>
+                            <p>Your workshop starts in 1 hour!</p>
+                            <p>📅 {workshop_dt.strftime('%B %d, %Y')} ({workshop_dt.strftime('%A')})<br>
+                            🕗 8:00 PM - 10:00 PM IST<br>
+                            🔗 <a href="{WORKSHOP_PLATFORM_LINK}">Join Here</a></p>
+                            <img src="cid:workshop_image" style="max-width:600px; height:auto;">
+                        </body></html>
+                    """
+                    if send_email(email, subject, html_body):
+                        reminders_for_email.append(current_date_str)
+                        reminder_sent[email] = reminders_for_email
+                        save_dict_to_file(reminder_sent, REMINDER_SENT_FILE)
 
 if __name__ == "__main__":
     main()
