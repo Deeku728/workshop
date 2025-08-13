@@ -133,7 +133,7 @@ def main():
 
         # Send registration confirmation if not sent
         if email not in processed_emails:
-            subject = f"🎉 Congratulations {name}! Your {WORKSHOP_TITLE} Registration is Confirmed"
+            subject = f"🎉 Congratulations {name}! Your {WORKSHOP_TITLE}  Workshop Registration is Confirmed"
             html_body = f"""
                 <html>
                     <body>
@@ -178,3 +178,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
