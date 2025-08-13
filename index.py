@@ -117,7 +117,7 @@ def send_email(recipient, subject, html_content):
 def format_workshop_schedule(workshop_dates):
     schedule_html = "<ul>"
     for dt in workshop_dates:
-        schedule_html += f"<li>📅 {dt.strftime('%B %d, %Y')} ({dt.strftime('%A')}) 🕗 8:00 PM - 10:00 PM IST</li>"
+        schedule_html += f"<li> {dt.strftime('%B %d, %Y')} ({dt.strftime('%A')}) 🕗 8:00 PM - 10:00 PM IST</li>"
     schedule_html += "</ul>"
     return schedule_html
 
@@ -159,7 +159,7 @@ def main():
                                     </a>
                             </p>
                             <img src="cid:workshop_image" alt="Workshop Image" style="max-width:500px; height:auto;">
-                            <p>Feel free to discuss in case of any concern or doubts </p>                     
+                            <p>Feel free to discuss in case of any concern or doubts. </p>                     
                             <p>Thanks and Regards, </p>
                             <p>Career lab Consulting Pvt. Ltd,</p>
                             <p>Training Manager</p>
@@ -188,10 +188,19 @@ def main():
                             <h2>Workshop Reminder</h2>
                             <p>Dear <b>{name}</b>,</p>
                             <p>Your workshop starts in 1 hour!</p>
-                            <p>📅 {workshop_dt.strftime('%B %d, %Y')} ({workshop_dt.strftime('%A')})<br>
+                            <p> {workshop_dt.strftime('%B %d, %Y')} ({workshop_dt.strftime('%A')})<br>
                             🕗 8:00 PM - 10:00 PM IST<br>
                             🔗 <a href="{WORKSHOP_PLATFORM_LINK}">Join Here</a></p>
                             <img src="cid:workshop_image" style="max-width:600px; height:auto;">
+                            <p>Feel free to discuss in case of any concern or doubts. </p>                     
+                            <p>Thanks and Regards, </p>
+                            <p>Career lab Consulting Pvt. Ltd,</p>
+                            <p>Training Manager</p>
+                            <p><a href="https://wa.me/918700236923" target="_blank">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" 
+                             alt="WhatsApp" 
+                            style="width:30px; height:20px;">: +91 8700 2369 23</a></p>
+                            
                         </body></html>
                     """
                     if send_email(email, subject, html_body):
@@ -202,6 +211,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
