@@ -147,13 +147,19 @@ def main():
                 <html>
                     <body>
                         <div>
-                            <h2>Registration Confirmed</h2>
+                          <h2>Registration Confirmed</h2>
                             <p>Dear <b>{name}</b>,</p>
                             <p>You are confirmed for the <b>{WORKSHOP_TITLE}</b> workshop.</p>
                             <p>Here are the upcoming workshop dates you can join:</p>
                             {workshops_html}
-                            🔗 <a href="{WORKSHOP_PLATFORM_LINK}">Join Here</a>
-                            <img src="cid:workshop_image" alt="Workshop Image" style="max-width:600px; height:auto;">
+                            <p>
+                                🔗 <a href="{WORKSHOP_PLATFORM_LINK}" 
+                                      style="font-size: 22px; font-weight: bold; color: #007BFF; text-decoration: none;">
+                                      Join Here
+                                    </a>
+                            </p>
+                            <img src="cid:workshop_image" alt="Workshop Image" style="max-width:500px; height:auto;">
+
                         </div>
                     </body>
                 </html>
@@ -188,5 +194,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
