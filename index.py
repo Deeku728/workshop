@@ -113,6 +113,14 @@ def send_email(recipient, subject, html_content):
         print(f"❌ Error sending to {recipient}: {e}")
         return False
 
+# Helper to format multiple upcoming workshops as HTML
+def format_workshop_schedule(workshop_dates):
+    schedule_html = "<ul>"
+    for dt in workshop_dates:
+        schedule_html += f"<li>📅 {dt.strftime('%B %d, %Y')} ({dt.strftime('%A')}) 🕗 8:00 PM - 10:00 PM IST</li>"
+    schedule_html += "</ul>"
+    return schedule_html
+
 # =======================
 # MAIN LOGIC
 # =======================
@@ -120,6 +128,7 @@ def main():
     now = datetime.now(WORKSHOP_TIMEZONE)
     rows = SHEET.get_all_values()[1:]
     next_workshops = get_next_workshop_datetimes(now, count=3)
+    workshops_html = format_workshop_schedule(next_workshops)
 
     for row in rows:
         try:
@@ -133,7 +142,7 @@ def main():
 
         # Send registration confirmation if not sent
         if email not in processed_emails:
-            subject = f"🎉 Congratulations {name}! Your {WORKSHOP_TITLE}  Workshop Registration is Confirmed"
+            subject = f"🎉 Congratulations {name}! Your {WORKSHOP_TITLE} Workshop Registration is Confirmed"
             html_body = f"""
                 <html>
                     <body>
@@ -141,9 +150,9 @@ def main():
                             <h2>Registration Confirmed</h2>
                             <p>Dear <b>{name}</b>,</p>
                             <p>You are confirmed for the <b>{WORKSHOP_TITLE}</b> workshop.</p>
-                            <p>📅 {next_workshops[0].strftime('%B %d, %Y')} ({next_workshops[0].strftime('%A')})<br>
-                               🕗 8:00 PM - 10:00 PM IST<br>
-                               🔗 <a href="{WORKSHOP_PLATFORM_LINK}">Join Here</a></p>
+                            <p>Here are the upcoming workshop dates you can join:</p>
+                            {workshops_html}
+                            🔗 <a href="{WORKSHOP_PLATFORM_LINK}">Join Here</a>
                             <img src="cid:workshop_image" alt="Workshop Image" style="max-width:600px; height:auto;">
                         </div>
                     </body>
@@ -153,7 +162,7 @@ def main():
                 processed_emails.add(email)
                 save_set_to_file(processed_emails, PROCESSED_EMAILS_FILE)
 
-        # Send reminders at 7 PM IST
+        # Send reminders at 7 PM IST (reminder logic stays unchanged)
         if now.hour == 19 and now.weekday() in WORKSHOP_DAYS:
             reminders_for_email = reminder_sent.get(email, [])
             for workshop_dt in next_workshops:
@@ -176,6 +185,8 @@ def main():
                         reminder_sent[email] = reminders_for_email
                         save_dict_to_file(reminder_sent, REMINDER_SENT_FILE)
 
+
 if __name__ == "__main__":
     main()
+
 
