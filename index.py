@@ -9,6 +9,7 @@ import os
 from datetime import datetime, timedelta
 import pytz
 
+
 # =======================
 # LOAD SECRETS FROM ENV
 # =======================
@@ -121,6 +122,14 @@ def format_workshop_schedule(workshop_dates):
     schedule_html += "</ul>"
     return schedule_html
 
+
+def is_within_tolerance(now, target_hour, minutes_tolerance=10):
+    """Check if current time is within ±minutes_tolerance of target_hour IST."""
+    target_time = now.replace(hour=target_hour, minute=0, second=0, microsecond=0)
+    diff = abs((now - target_time).total_seconds()) / 60  # difference in minutes
+    return diff <= minutes_tolerance
+
+
 # =======================
 # MAIN LOGIC
 # =======================
@@ -132,8 +141,8 @@ def main():
 
     for row in rows:
         try:
-            name = row[1].strip() if len(row) > 1 else None
-            email = row[2].strip() if len(row) > 2 else None
+           name = row[1].strip().upper() if len(row) > 1 else None
+           email = row[2].strip() if len(row) > 2 else None
         except Exception:
             continue
 
@@ -150,23 +159,20 @@ def main():
                           <h2>Registration Confirmed</h2>
                             <p>Dear <b>{name}</b>,</p>
                             <p>You are confirmed for the <b>{WORKSHOP_TITLE}</b> workshop.</p>
-                            <p>Here are the upcoming workshop dates you can join:</p>
+                            <p>Here are the upcoming workshop dates you can join on any of these as per your convenience:</p>
                             {workshops_html}
-                            <p>
-                                🔗 <a href="{WORKSHOP_PLATFORM_LINK}" 
-                                      style="font-size: 22px; font-weight: bold; color: #007BFF; text-decoration: none;">
-                                      Join Here
-                                    </a>
-                            </p>
+                            <p>Click on the Gmeet link provided below to attend the workshop:</p>
+                            🔗<a href="{WORKSHOP_PLATFORM_LINK}">Join Here</a>
                             <img src="cid:workshop_image" alt="Workshop Image" style="max-width:500px; height:auto;">
-                            <p>Feel free to discuss in case of any concern or doubts. </p>                     
-                            <p>Thanks and Regards, </p>
-                            <p>Career lab Consulting Pvt. Ltd,</p>
+                            <p>Feel free to discuss in case of any concern or doubts.</p>                     
+                            <p>Thanks And Regards,</p>
+                            <p>Career Lab Consulting Pvt. Ltd,</p>
                             <p>Training Manager</p>
                             <p><a href="https://wa.me/918700236923" target="_blank">
                             <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" 
-                             alt="WhatsApp" 
-                            style="width:30px; height:20px;">: +91 8700 2369 23</a></p>
+                            alt="WhatsApp" 
+                            style="width:15px; height:10px;">: +91 8700 2369 23</a></p>
+
 
                         </div>
                     </body>
@@ -176,42 +182,54 @@ def main():
                 processed_emails.add(email)
                 save_set_to_file(processed_emails, PROCESSED_EMAILS_FILE)
 
-        # Send reminders at 7 PM IST (reminder logic stays unchanged)
-        if now.hour == 19 and now.weekday() in WORKSHOP_DAYS:
+      
+
+
+        # --- Reminder logic ---
+        if (is_within_tolerance(now, 10) or is_within_tolerance(now, 19)) and now.weekday() in WORKSHOP_DAYS:
             reminders_for_email = reminder_sent.get(email, [])
+
             for workshop_dt in next_workshops:
-                current_date_str = workshop_dt.strftime("%Y-%m-%d")
-                if len(reminders_for_email) < 3 and current_date_str not in reminders_for_email:
-                    subject = f"⏰ Reminder: {WORKSHOP_TITLE} Starts in 1 Hour!"
+                reminder_key = f"{workshop_dt.strftime('%Y-%m-%d')}_{'10AM' if is_within_tolerance(now, 10) else '7PM'}"
+
+                if sum(1 for r in reminders_for_email if workshop_dt.strftime('%Y-%m-%d') in r) < 3 \
+                and reminder_key not in reminders_for_email:
+
+                    if is_within_tolerance(now, 10):
+                        subject = f"📅 Reminder: {WORKSHOP_TITLE} Workshop Starts Tonight!"
+                        intro_line = "Your workshop is scheduled for tonight."
+                    else:  # 7 PM reminder
+                        subject = f"⏰ Reminder: {WORKSHOP_TITLE} Workshop Starts in 1 Hour!"
+                        intro_line = "Your workshop starts in 1 hour!"
+
                     html_body = f"""
                         <html><body>
                             <h2>Workshop Reminder</h2>
                             <p>Dear <b>{name}</b>,</p>
-                            <p>Your workshop starts in 1 hour!</p>
-                            <p> {workshop_dt.strftime('%B %d, %Y')} ({workshop_dt.strftime('%A')})<br>
+                            <p>{intro_line}</p>
+                            <p>📅 {workshop_dt.strftime('%B %d, %Y')} ({workshop_dt.strftime('%A')})<br>
                             🕗 8:00 PM - 10:00 PM IST<br>
-                            🔗 <a href="{WORKSHOP_PLATFORM_LINK}">Join Here</a></p>
-                            <img src="cid:workshop_image" style="max-width:600px; height:auto;">
-                            <p>Feel free to discuss in case of any concern or doubts. </p>                     
-                            <p>Thanks and Regards, </p>
-                            <p>Career lab Consulting Pvt. Ltd,</p>
+                            <p>Click on the Gmeet link provided below to attend the workshop:</p>
+                            🔗 <a href="{WORKSHOP_PLATFORM_LINK}" style="font-size: 20px; font-weight: bold;">Join Here</a></p>
+                            <img src="cid:workshop_image" style="max-width:500px; height:auto;">
+                            <p>Feel free to discuss in case of any concern or doubts.</p>                     
+                            <p>Thanks And Regards,</p>
+                            <p>Career Lab Consulting Pvt. Ltd,</p>
                             <p>Training Manager</p>
                             <p><a href="https://wa.me/918700236923" target="_blank">
                             <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" 
-                             alt="WhatsApp" 
-                            style="width:30px; height:20px;">: +91 8700 2369 23</a></p>
-                            
+                            alt="WhatsApp" style="width:15px; height:15px;"> : +91 8700 2369 23</a></p>
                         </body></html>
                     """
+
                     if send_email(email, subject, html_body):
-                        reminders_for_email.append(current_date_str)
+                        reminders_for_email.append(reminder_key)
                         reminder_sent[email] = reminders_for_email
                         save_dict_to_file(reminder_sent, REMINDER_SENT_FILE)
 
 
 if __name__ == "__main__":
     main()
-
 
 
 
