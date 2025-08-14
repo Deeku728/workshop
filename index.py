@@ -162,7 +162,12 @@ def main():
                             <p>Here are the upcoming workshop dates you can join on any of these as per your convenience:</p>
                             {workshops_html}
                             <p>Click on the Gmeet link provided below to attend the workshop:</p>
-                            🔗<a href="{WORKSHOP_PLATFORM_LINK}">Join Here</a>
+                            <p>
+                                🔗<a href="{WORKSHOP_PLATFORM_LINK}" 
+                                    style="font-size: 20px; font-weight: bold; color: #007BFF; text-decoration: none;">
+                                    Join Here
+                                    </a>
+                            </p>
                             <img src="cid:workshop_image" alt="Workshop Image" style="max-width:500px; height:auto;">
                             <p>Feel free to discuss in case of any concern or doubts.</p>                     
                             <p>Thanks And Regards,</p>
@@ -196,7 +201,7 @@ def main():
                 and reminder_key not in reminders_for_email:
 
                     if is_within_tolerance(now, 10):
-                        subject = f"📅 Reminder: {WORKSHOP_TITLE} Workshop Starts Tonight!"
+                        subject = f" Reminder: {WORKSHOP_TITLE} Workshop Starts Tonight!"
                         intro_line = "Your workshop is scheduled for tonight."
                     else:  # 7 PM reminder
                         subject = f"⏰ Reminder: {WORKSHOP_TITLE} Workshop Starts in 1 Hour!"
@@ -207,7 +212,7 @@ def main():
                             <h2>Workshop Reminder</h2>
                             <p>Dear <b>{name}</b>,</p>
                             <p>{intro_line}</p>
-                            <p>📅 {workshop_dt.strftime('%B %d, %Y')} ({workshop_dt.strftime('%A')})<br>
+                            <p>{workshop_dt.strftime('%B %d, %Y')} ({workshop_dt.strftime('%A')})<br>
                             🕗 8:00 PM - 10:00 PM IST<br>
                             <p>Click on the Gmeet link provided below to attend the workshop:</p>
                             🔗 <a href="{WORKSHOP_PLATFORM_LINK}" style="font-size: 20px; font-weight: bold;">Join Here</a></p>
@@ -230,7 +235,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
 
 
