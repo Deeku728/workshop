@@ -37,6 +37,7 @@ SHEET = CLIENT.open_by_key(SHEET_ID).worksheet(SHEET_NAME)
 # Persistent tracking files
 PROCESSED_EMAILS_FILE = "processed_emails.json"
 REMINDER_SENT_FILE = "reminder_sent.json"
+WORKSHOP_TRACK_FILE = "workshop_tracking.json"
 
 if os.path.exists(PROCESSED_EMAILS_FILE):
     with open(PROCESSED_EMAILS_FILE, "r") as f:
@@ -49,6 +50,15 @@ if os.path.exists(REMINDER_SENT_FILE):
         reminder_sent = json.load(f)
 else:
     reminder_sent = {}
+
+# Load workshop tracking data
+if os.path.exists(WORKSHOP_TRACK_FILE):
+    with open(WORKSHOP_TRACK_FILE, "r") as f:
+        workshop_tracking = json.load(f)
+else:
+    workshop_tracking = {}
+
+
 
 # Workshop constants
 WORKSHOP_TITLE = os.getenv("WORKSHOP_TITLE", "Agentic AI Workshop")
@@ -130,10 +140,25 @@ def is_within_tolerance(now, target_hour, minutes_tolerance=10):
     return diff <= minutes_tolerance
 
 
+
+def cleanup_old_workshops():
+    """Remove past workshop dates from tracking file."""
+    today = datetime.now(WORKSHOP_TIMEZONE).date()
+    changed = False
+    for email in list(workshop_tracking.keys()):
+        future_dates = [d for d in workshop_tracking[email] if datetime.strptime(d, "%Y-%m-%d").date() >= today]
+        if future_dates != workshop_tracking[email]:
+            workshop_tracking[email] = future_dates
+            changed = True
+    if changed:
+        save_dict_to_file(workshop_tracking, WORKSHOP_TRACK_FILE)
+
+
 # =======================
 # MAIN LOGIC
 # =======================
 def main():
+    cleanup_old_workshops()
     now = datetime.now(WORKSHOP_TIMEZONE)
     rows = SHEET.get_all_values()[1:]
     next_workshops = get_next_workshop_datetimes(now, count=3)
@@ -141,100 +166,104 @@ def main():
 
     for row in rows:
         try:
-           name = row[1].strip().upper() if len(row) > 1 else None
-           email = row[2].strip() if len(row) > 2 else None
+            name = row[1].strip().upper() if len(row) > 1 else None
+            email = row[2].strip() if len(row) > 2 else None
         except Exception:
             continue
 
         if not email or not name:
             continue
 
-        # Send registration confirmation if not sent
+        # If user not tracked yet → assign first 3 upcoming workshops
+        if email not in workshop_tracking:
+            workshop_tracking[email] = [dt.strftime("%Y-%m-%d") for dt in get_next_workshop_datetimes(now, count=3)]
+            save_dict_to_file(workshop_tracking, WORKSHOP_TRACK_FILE)
+
+        # Send initial confirmation email
         if email not in processed_emails:
             subject = f"🎉 Congratulations {name}! Your {WORKSHOP_TITLE} Workshop Registration is Confirmed"
             html_body = f"""
-                <html>
-                    <body>
-                        <div>
-                          <h2>Registration Confirmed</h2>
-                            <p>Dear <b>{name}</b>,</p>
-                            <p>You are confirmed for the <b>{WORKSHOP_TITLE}</b> workshop.</p>
-                            <p>Here are the upcoming workshop dates you can join on any of these as per your convenience:</p>
-                            {workshops_html}
-                            <p>Click on the Gmeet link provided below to attend the workshop:</p>
-                            <p>
-                                🔗<a href="{WORKSHOP_PLATFORM_LINK}" 
-                                    style="font-size: 20px; font-weight: bold; color: #007BFF; text-decoration: none;">
-                                    Join Here
-                                    </a>
-                            </p>
-                            <img src="cid:workshop_image" alt="Workshop Image" style="max-width:500px; height:auto;">
-                            <p>Feel free to discuss in case of any concern or doubts.</p>                     
-                            <p>Thanks And Regards,</p>
-                            <p>Career Lab Consulting Pvt. Ltd,</p>
-                            <p>Training Manager</p>
-                            <p><a href="https://wa.me/918700236923" target="_blank">
-                            <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" 
-                            alt="WhatsApp" 
-                            style="width:15px; height:10px;">: +91 8700 2369 23</a></p>
-
-
-                        </div>
-                    </body>
-                </html>
+            <html><body>
+                <h2>Registration Confirmed</h2>
+                <p>Dear <b>{name}</b>,</p>
+                <p>You are confirmed for the <b>{WORKSHOP_TITLE}</b> workshop.</p>
+                <p>Here are the upcoming workshop dates you can join on any of these as per your convenience:</p>
+                {workshops_html}
+                <p>Click on the Gmeet link provided below to attend the workshop:</p>
+                <p>
+                    🔗<a href="{WORKSHOP_PLATFORM_LINK}" style="font-size: 20px; font-weight: bold; color: #007BFF; text-decoration: none;"> Join Here </a>
+                </p>
+                <img src="cid:workshop_image" alt="Workshop Image" style="max-width:500px; height:auto;">
+                <p>Feel free to discuss in case of any concern or doubts.</p>
+                <p>Thanks And Regards,</p>
+                <p>Career Lab Consulting Pvt. Ltd,</p>
+                <p>Training Manager</p>
+                <p><a href="https://wa.me/918700236923" target="_blank">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp" style="width:15px; height:10px;">
+                    : +91 8700 2369 23</a>
+                </p>
+            </body></html>
             """
             if send_email(email, subject, html_body):
                 processed_emails.add(email)
                 save_set_to_file(processed_emails, PROCESSED_EMAILS_FILE)
 
-      
+        # === INTEGRATED LOGIC: Process only the first upcoming workshop ===
+        personal_workshops = workshop_tracking.get(email, [])
+        if personal_workshops:
+            next_ws_date_str = personal_workshops[0]
+            ws_dt = datetime.strptime(next_ws_date_str, "%Y-%m-%d").replace(tzinfo=WORKSHOP_TIMEZONE)
 
+            if now.date() == ws_dt.date():
+                reminders_for_email = reminder_sent.get(email, [])
 
-        # --- Reminder logic ---
-        if (is_within_tolerance(now, 10) or is_within_tolerance(now, 19)) and now.weekday() in WORKSHOP_DAYS:
-            reminders_for_email = reminder_sent.get(email, [])
+                # Reminders: 10 AM, 7 PM, 8 PM
+                for hour, subject_prefix, intro_line in [
+                    (10, f"📅 Reminder: {WORKSHOP_TITLE} Workshop Starts Tonight!", "Your workshop is scheduled for tonight."),
+                    (19, f"⏰ Reminder: {WORKSHOP_TITLE} Workshop Starts in 1 Hour!", "Your workshop starts in 1 hour!"),
+                    (20, f"🚀 {WORKSHOP_TITLE} Workshop is Starting Now!", "The workshop is starting now — click below to join.")
+                ]:
+                    if is_within_tolerance(now, hour):
+                        reminder_key = f"{next_ws_date_str}_{hour}"
+                        if reminder_key not in reminders_for_email:
+                            html_body = f"""
+                            <html><body>
+                                <h2>Workshop Reminder</h2>
+                                <p>Dear <b>{name}</b>,</p>
+                                <p>{intro_line}</p>
+                                <p>{ws_dt.strftime('%B %d, %Y')} ({ws_dt.strftime('%A')})<br>
+                                🕗 8:00 PM - 10:00 PM IST</p>
+                                <p>Click on the Gmeet link below to attend:</p>
+                                🔗 <a href="{WORKSHOP_PLATFORM_LINK}" style="font-size: 20px; font-weight: bold;">Join Here</a>
+                                <img src="cid:workshop_image" style="max-width:500px; height:auto;">
+                                <p>Thanks And Regards,<br>Career Lab Consulting Pvt. Ltd,<br>Training Manager</p>
+                                <p><a href="https://wa.me/918700236923" target="_blank">
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp" style="width:15px; height:10px;">
+                                : +91 8700 2369 23</a>
+                                 </p>
+                            </body></html>
+                            """
+                            if send_email(email, subject_prefix, html_body):
+                                reminders_for_email.append(reminder_key)
+                                reminder_sent[email] = reminders_for_email
+                                save_dict_to_file(reminder_sent, REMINDER_SENT_FILE)
 
-            for workshop_dt in next_workshops:
-                reminder_key = f"{workshop_dt.strftime('%Y-%m-%d')}_{'10AM' if is_within_tolerance(now, 10) else '7PM'}"
+                # After workshop ends (10 PM IST), remove it from the list
+                if now.hour >= 22:
+                    workshop_tracking[email].pop(0)
+                    save_dict_to_file(workshop_tracking, WORKSHOP_TRACK_FILE)
 
-                if sum(1 for r in reminders_for_email if workshop_dt.strftime('%Y-%m-%d') in r) < 3 \
-                and reminder_key not in reminders_for_email:
-
-                    if is_within_tolerance(now, 10):
-                        subject = f" Reminder: {WORKSHOP_TITLE} Workshop Starts Tonight!"
-                        intro_line = "Your workshop is scheduled for tonight."
-                    else:  # 7 PM reminder
-                        subject = f"⏰ Reminder: {WORKSHOP_TITLE} Workshop Starts in 1 Hour!"
-                        intro_line = "Your workshop starts in 1 hour!"
-
-                    html_body = f"""
-                        <html><body>
-                            <h2>Workshop Reminder</h2>
-                            <p>Dear <b>{name}</b>,</p>
-                            <p>{intro_line}</p>
-                            <p>{workshop_dt.strftime('%B %d, %Y')} ({workshop_dt.strftime('%A')})<br>
-                            🕗 8:00 PM - 10:00 PM IST<br>
-                            <p>Click on the Gmeet link provided below to attend the workshop:</p>
-                            🔗 <a href="{WORKSHOP_PLATFORM_LINK}" style="font-size: 20px; font-weight: bold;">Join Here</a></p>
-                            <img src="cid:workshop_image" style="max-width:500px; height:auto;">
-                            <p>Feel free to discuss in case of any concern or doubts.</p>                     
-                            <p>Thanks And Regards,</p>
-                            <p>Career Lab Consulting Pvt. Ltd,</p>
-                            <p>Training Manager</p>
-                            <p><a href="https://wa.me/918700236923" target="_blank">
-                            <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" 
-                            alt="WhatsApp" style="width:15px; height:15px;"> : +91 8700 2369 23</a></p>
-                        </body></html>
-                    """
-
-                    if send_email(email, subject, html_body):
-                        reminders_for_email.append(reminder_key)
-                        reminder_sent[email] = reminders_for_email
-                        save_dict_to_file(reminder_sent, REMINDER_SENT_FILE)
+            # If list falls below 3 dates, top it up
+            while len(workshop_tracking[email]) < 3:
+                last_date = datetime.strptime(workshop_tracking[email][-1], "%Y-%m-%d")
+                more_dates = get_next_workshop_datetimes(last_date + timedelta(days=1), count=1)
+                workshop_tracking[email].append(more_dates[0].strftime("%Y-%m-%d"))
+                save_dict_to_file(workshop_tracking, WORKSHOP_TRACK_FILE)
 
 
 if __name__ == "__main__":
     main()
+
 
 
 
